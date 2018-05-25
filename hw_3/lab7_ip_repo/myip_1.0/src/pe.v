@@ -4,15 +4,15 @@ module my_pe #(
     (
         // clk/reset
         input aclk,
-        input aresetn,        
+        input aresetn,
         // port A
-        input [31:0] ain,        
-        // peram -> port B 
+        input [31:0] ain,
+        // peram -> port B
         input [31:0] din,
         input [L_RAM_SIZE-1:0]  addr,
-        input we,        
+        input we,
         // integrated valid signal
-        input valid,        
+        input valid,
         // computation result
         output dvalid,
         output [31:0] dout
@@ -29,7 +29,7 @@ always @(posedge aclk)
                 peram[addr] <= din;
             else
                 bin <= peram[addr];
-        
+
         reg [31:0] dout_fb;
         always @(posedge aclk)
             if (!aresetn)
@@ -39,7 +39,7 @@ always @(posedge aclk)
                     dout_fb <= dout;
                 else
                     dout_fb <= dout_fb;
-        
+
         floating_point_0 u_float_dsp (
             .aclk             (aclk),
             .aresetn          (aresetn),
@@ -53,7 +53,7 @@ always @(posedge aclk)
             .m_axis_result_tvalid (dvalid),
             .m_axis_result_tdata  (dout)
        );
-       
+
     endmodule
 
- 
+

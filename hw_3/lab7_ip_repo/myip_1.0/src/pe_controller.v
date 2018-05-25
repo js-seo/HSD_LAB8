@@ -12,7 +12,7 @@ module pe_con#(
         //output [L_RAM_SIZE:0] rdaddr,
 	    //input [31:0] rddata,
 	    //output reg [31:0] wrdata,
-	    
+
 	    // to BRAM
 	    output [31:0] BRAM_ADDR,
 	    output [31:0] BRAM_WRDATA,
@@ -32,12 +32,12 @@ module pe_con#(
     wire [31:0] dout;
     wire [L_RAM_SIZE:0] rdaddr;
     wire [31:0] rddata;
-    
-    
+
+
     reg [31:0] wrdata;
-    
+
     clk_wiz_0 u_clk (.clk_out1(BRAM_CLK), .clk_in1(aclk));
-   
+
    // global block ram
     reg [31:0] gdout;
     (* ram_style = "block" *) reg [31:0] globalmem [0:VECTOR_SIZE-1];
@@ -47,13 +47,13 @@ module pe_con#(
         else
             gdout <= globalmem[addr];
 
-  
+
 	//FSM
     // transition triggering flags
     wire load_done;
     wire calc_done;
     wire done_done;
-        
+
     // state register
     reg [3:0] state, state_d;
     localparam S_IDLE = 4'd0;
@@ -78,7 +78,7 @@ module pe_con#(
                 default:
                     state <= S_IDLE;
             endcase
-    
+
     always @(posedge aclk)
         if (!aresetn)
             state_d <= S_IDLE;
@@ -99,7 +99,7 @@ module pe_con#(
                 load_flag <= 'd1;
             else
                 load_flag <= load_flag;
-    
+
     // S_CALC
     reg calc_flag;
     wire calc_flag_reset = !aresetn || calc_done;
@@ -113,7 +113,7 @@ module pe_con#(
                 calc_flag <= 'd1;
             else
                 calc_flag <= calc_flag;
-    
+
     // S_DONE
     reg done_flag;
     wire done_flag_reset = !aresetn || done_done;
@@ -127,12 +127,12 @@ module pe_con#(
                 done_flag <= 'd1;
             else
                 done_flag <= done_flag;
-    
-    
+
+
     // down counter
     reg [31:0] counter;
     wire [31:0] ld_val = (load_flag_en)? CNTLOAD1 :
-                         (calc_flag_en)? CNTCALC1 : 
+                         (calc_flag_en)? CNTCALC1 :
                          (done_flag_en)? CNTDONE  : 'd0;
     wire counter_ld = load_flag_en || calc_flag_en || done_flag_en;
     wire counter_en = load_flag || dvalid || done_flag;
@@ -145,13 +145,13 @@ module pe_con#(
                 counter <= ld_val;
             else if (counter_en)
                 counter <= counter - 1;
-    
+
     //part3: update output and internal register
     //S_LOAD: we
 	assign we_local = (load_flag && counter[L_RAM_SIZE+1] && !counter[0]) ? 'd1 : 'd0;
 	assign we_global = (load_flag && !counter[L_RAM_SIZE+1] && !counter[0]) ? 'd1 : 'd0;
-	
-	//S_CALC: wrdata 
+
+	//S_CALC: wrdata
    always @(posedge aclk)
         if (!aresetn)
                 wrdata <= 'd0;
@@ -171,15 +171,15 @@ module pe_con#(
                 valid_pre <= 'd1;
             else
                 valid_pre <= 'd0;
-    
+
     always @(posedge aclk)
         if (!aresetn)
             valid_reg <= 'd0;
         else if (calc_flag)
             valid_reg <= valid_pre;
-     
+
     assign valid = (calc_flag) && valid_reg;
-    
+
 	//S_CALC: ain
 	assign ain = (calc_flag)? gdout : 'd0;
 
@@ -196,16 +196,16 @@ module pe_con#(
     assign calc_done = (calc_flag) && (counter == 'd0) && dvalid;
     assign done_done = (done_flag) && (counter == 'd0);
     assign done = (state == S_DONE) && done_done;
-    
-    
+
+
     // BRAM interface
     assign rddata = BRAM_RDDATA;
     assign BRAM_WRDATA = wrdata;
-    
+
     assign BRAM_ADDR = (done_flag_en)? 0 : { {29-L_RAM_SIZE{1'b0}}, rdaddr, 2'b00};
     assign BRAM_WE = (done_flag_en)? 4'hF : 0;
-    
-    
+
+
     my_pe #(
         .L_RAM_SIZE(L_RAM_SIZE)
     ) u_pe (
