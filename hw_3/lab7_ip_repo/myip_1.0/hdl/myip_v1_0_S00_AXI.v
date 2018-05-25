@@ -421,8 +421,8 @@
     assign run_complete = (done && ~done_d);
 
     pe_con #(
-        .VECTOR_SIZE(16),
-        .L_RAM_SIZE(4)
+        .VECTOR_SIZE(64),
+        .L_RAM_SIZE(6)
     ) u_con
     (
         //from axi
