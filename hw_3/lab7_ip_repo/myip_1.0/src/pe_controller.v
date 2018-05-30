@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module pe_con#(
-  parameter VECTOR_SIZE = 16, // vector size
-  parameter L_RAM_SIZE = 4
+  parameter VECTOR_SIZE = 64, // vector size
+  parameter L_RAM_SIZE = 6
 )
 (
   input start,

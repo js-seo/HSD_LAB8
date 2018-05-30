@@ -38,23 +38,26 @@ module my_pe #(parameter L_RAM_SIZE = 6)
         dout_fb <= dout;
       else
         dout_fb <= dout_fb;
+        
+  reg [31:0] little_ain;
+  reg [31:0] little_bin;
+  reg [31:0] ain_converted;
+  reg [31:0] bin_converted;
 
-  // Convert big endian to little endian
-  wire [31:0] little_ain;
-  wire [31:0] little_bin;
-  assign little_ain = { ain[7:0], ain[15:8], ain[23:16], ain[31:24] };
-  assign little_bin = { bin[7:0], bin[15:8], bin[23:16], bin[31:24] };
-  // Convert 16-bit floats to 32-bit floats
-  wire [31:0] ain_converted;
-  wire [31:0] bin_converted;
+  always @(posedge aclk) begin
+    // Convert big endian to little endian
+    little_ain = { ain[7:0], ain[15:8], ain[23:16], ain[31:24] };
+    little_bin = { bin[7:0], bin[15:8], bin[23:16], bin[31:24] };
   
-  assign ain_converted = ((little_ain & 32'h8000) << 16)
+    // Convert 16-bit floats to 32-bit floats
+    ain_converted = ((little_ain & 32'h8000) << 16)
                             | ((((little_ain & 32'h7C00) >> 10) + 112) << 23)
                             | ((little_ain & 32'h3FF) << 13);
-  assign bin_converted = ((little_bin & 32'h8000) << 16)
+    bin_converted = ((little_bin & 32'h8000) << 16)
                             | ((((little_bin & 32'h7C00) >> 10) + 112) << 23)
                             | ((little_bin & 32'h3FF) << 13);
-
+  end
+                            
   floating_point_0 u_float_dsp (
     .aclk             (aclk),
     .aresetn          (aresetn),
