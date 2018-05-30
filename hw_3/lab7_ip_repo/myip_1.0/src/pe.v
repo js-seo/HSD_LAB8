@@ -39,30 +39,38 @@ module my_pe #(parameter L_RAM_SIZE = 6)
       else
         dout_fb <= dout_fb;
 
-  // Convert big endian to little endian
-  wire [31:0] little_ain;
-  wire [31:0] little_bin;
-  assign little_ain = { ain[7:0], ain[15:8], ain[23:16], ain[31:24] };
-  assign little_bin = { bin[7:0], bin[15:8], bin[23:16], bin[31:24] };
-  // Convert 16-bit floats to 32-bit floats
-  wire [31:0] ain_converted;
-  wire [31:0] bin_converted;
+  reg converted;
+  reg [31:0] little_ain;
+  reg [31:0] little_bin;
+  reg [31:0] ain_converted;
+  reg [31:0] bin_converted;
+  always @(posedge aclk)
+    if (valid) begin
+      // Convert big endian to little endian
+      little_ain = { ain[7:0], ain[15:8], ain[23:16], ain[31:24] };
+      little_bin = { bin[7:0], bin[15:8], bin[23:16], bin[31:24] }; 
+      // Convert 16-bit floats to 32-bit floats
+      ain_converted = ((little_ain & 32'h8000) << 16)
+                      | ((((little_ain & 32'h7C00) >> 10) + 112) << 23)
+                      | ((little_ain & 32'h3FF) << 13);
+      bin_converted = ((little_bin & 32'h8000) << 16)
+                      | ((((little_bin & 32'h7C00) >> 10) + 112) << 23)
+                      | ((little_bin & 32'h3FF) << 13);
+      converted = 'd1;
+    end
+    else
+      converted <= 'd0;
   
-  assign ain_converted = ((little_ain & 32'h8000) << 16)
-                            | ((((little_ain & 32'h7C00) >> 10) + 112) << 23)
-                            | ((little_ain & 32'h3FF) << 13);
-  assign bin_converted = ((little_bin & 32'h8000) << 16)
-                            | ((((little_bin & 32'h7C00) >> 10) + 112) << 23)
-                            | ((little_bin & 32'h3FF) << 13);
+  
 
   floating_point_0 u_float_dsp (
     .aclk             (aclk),
     .aresetn          (aresetn),
-    .s_axis_a_tvalid  (avalid),
+    .s_axis_a_tvalid  (converted),
     .s_axis_a_tdata   (ain_converted),
-    .s_axis_b_tvalid  (bvalid),
+    .s_axis_b_tvalid  (converted),
     .s_axis_b_tdata   (bin_converted),
-    .s_axis_c_tvalid  (cvalid),
+    .s_axis_c_tvalid  (converted),
     //.s_axis_c_tdata   (sreg[FLOATDELAY-1]),
     .s_axis_c_tdata   (dout_fb),
     .m_axis_result_tvalid (dvalid),
