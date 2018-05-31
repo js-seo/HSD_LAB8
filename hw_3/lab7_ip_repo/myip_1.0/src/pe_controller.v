@@ -31,9 +31,10 @@ module pe_con#(
   wire valid;
   wire dvalid;
   wire [31:0] dout;
-  wire [L_RAM_SIZE:0] rdaddr;
+  wire [31:0] rdaddr;
   wire [31:0] rddata;
 
+  wire [L_RAM_SIZE+1:0] wraddr;
   reg [31:0] wrdata;
 
   clk_wiz_0 u_clk (.clk_out1(BRAM_CLK), .clk_in1(aclk));
@@ -54,6 +55,15 @@ module pe_con#(
   wire calc_done;
   wire done_done;
 
+  reg [L_RAM_SIZE-1:0] done_cnt;
+  always @(posedge aclk)
+    if (!aresetn)
+      done_cnt <= 0;
+    else if (done_done)
+      done_cnt <= done_cnt + 1;
+    else
+      done_cnt <= done_cnt;
+  
   // state register
   reg [3:0] state, state_d;
   localparam S_IDLE = 4'd0;
@@ -74,7 +84,7 @@ module pe_con#(
               S_CALC: // CALCULATE RESULT
                   state <= (calc_done)? S_DONE : S_CALC;
               S_DONE:
-                  state <= (done_done)? S_IDLE : S_DONE;
+                  state <= (done_done)? (done_cnt == 'd63 ? S_IDLE : S_LOAD) : S_DONE;
               default:
                   state <= S_IDLE;
           endcase
@@ -89,7 +99,7 @@ module pe_con#(
   // S_LOAD
   reg load_flag;
   wire load_flag_reset = !aresetn || load_done;
-  wire load_flag_en = (state_d == S_IDLE) && (state == S_LOAD);
+  wire load_flag_en = (state_d == S_IDLE || state_d == S_DONE) && (state == S_LOAD);
   localparam CNTLOAD1 = (4*VECTOR_SIZE) -1;
   always @(posedge aclk)
       if (load_flag_reset)
@@ -189,20 +199,25 @@ module pe_con#(
 
   //S_LOAD
   assign din = (load_flag)? rddata : 'd0;
-  assign rdaddr = (state == S_LOAD)? counter[L_RAM_SIZE+1:1] : 'd0;
+  assign rdaddr = (state == S_LOAD) ?
+    (counter[L_RAM_SIZE+1] ?
+        VECTOR_SIZE * VECTOR_SIZE + counter[L_RAM_SIZE:1]
+        :
+        done_cnt * VECTOR_SIZE + counter[L_RAM_SIZE:1]
+    ) * 4 : 'd0;
 
   //done signals
   assign load_done = (load_flag) && (counter == 'd0);
   assign calc_done = (calc_flag) && (counter == 'd0) && dvalid;
   assign done_done = (done_flag) && (counter == 'd0);
-  assign done = (state == S_DONE) && done_done;
-
+  assign done = (state == S_DONE) && done_done && (done_cnt == 'd63);
 
   // BRAM interface
   assign rddata = BRAM_RDDATA;
   assign BRAM_WRDATA = wrdata;
 
-  assign BRAM_ADDR = (done_flag_en)? 0 : { {29-L_RAM_SIZE{1'b0}}, rdaddr, 2'b00};
+  assign wraddr = done_cnt * 4;
+  assign BRAM_ADDR = (done_flag_en)? wraddr : rdaddr;
   assign BRAM_WE = (done_flag_en)? 4'hF : 0;
 
 
