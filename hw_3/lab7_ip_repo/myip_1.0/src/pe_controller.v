@@ -55,9 +55,12 @@ module pe_con#(
   wire calc_done;
   wire done_done;
 
+    wire rst;
+    assign rst = !aresetn || start;
+    
   reg [L_RAM_SIZE-1:0] done_cnt;
   always @(posedge aclk)
-    if (!aresetn)
+    if (rst)
       done_cnt <= 0;
     else if (done_done)
       done_cnt <= done_cnt + 1;
@@ -71,6 +74,7 @@ module pe_con#(
   localparam S_CALC = 4'd2;
   localparam S_DONE = 4'd3;
 
+  
   //part 1: state transition
   always @(posedge aclk)
       if (!aresetn)
@@ -90,7 +94,7 @@ module pe_con#(
           endcase
 
   always @(posedge aclk)
-      if (!aresetn)
+      if (rst)
           state_d <= S_IDLE;
       else
           state_d <= state;
@@ -98,7 +102,7 @@ module pe_con#(
   //part 2: determine state
   // S_LOAD
   reg load_flag;
-  wire load_flag_reset = !aresetn || load_done;
+  wire load_flag_reset = rst || load_done;
   wire load_flag_en = (state_d == S_IDLE || state_d == S_DONE) && (state == S_LOAD);
   localparam CNTLOAD1 = (4*VECTOR_SIZE) -1;
   always @(posedge aclk)
@@ -112,7 +116,7 @@ module pe_con#(
 
   // S_CALC
   reg calc_flag;
-  wire calc_flag_reset = !aresetn || calc_done;
+  wire calc_flag_reset = rst || calc_done;
   wire calc_flag_en = (state_d == S_LOAD) && (state == S_CALC);
   localparam CNTCALC1 = (VECTOR_SIZE) - 1;
   always @(posedge aclk)
@@ -126,7 +130,7 @@ module pe_con#(
 
   // S_DONE
   reg done_flag;
-  wire done_flag_reset = !aresetn || done_done;
+  wire done_flag_reset = rst || done_done;
   wire done_flag_en = (state_d == S_CALC) && (state == S_DONE);
   localparam CNTDONE = 5;
   always @(posedge aclk)
@@ -146,7 +150,7 @@ module pe_con#(
                        (done_flag_en)? CNTDONE  : 'd0;
   wire counter_ld = load_flag_en || calc_flag_en || done_flag_en;
   wire counter_en = load_flag || dvalid || done_flag;
-  wire counter_reset = !aresetn || load_done || calc_done || done_done;
+  wire counter_reset = rst || load_done || calc_done || done_done;
   always @(posedge aclk)
       if (counter_reset)
           counter <= 'd0;
@@ -163,7 +167,7 @@ module pe_con#(
 
   //S_CALC: wrdata
   always @(posedge aclk)
-      if (!aresetn)
+      if (rst)
               wrdata <= 'd0;
       else
           if (calc_done)
@@ -174,7 +178,7 @@ module pe_con#(
   //S_CALC: valid
   reg valid_pre, valid_reg;
   always @(posedge aclk)
-      if (!aresetn)
+      if (rst)
           valid_pre <= 'd0;
       else
           if (counter_ld || counter_en)
@@ -183,7 +187,7 @@ module pe_con#(
               valid_pre <= 'd0;
 
   always @(posedge aclk)
-      if (!aresetn)
+      if (rst)
           valid_reg <= 'd0;
       else if (calc_flag)
           valid_reg <= valid_pre;
@@ -225,7 +229,7 @@ module pe_con#(
       .L_RAM_SIZE(L_RAM_SIZE)
   ) u_pe (
       .aclk(aclk),
-      .aresetn(aresetn && (state != S_DONE)),
+      .aresetn(!rst && (state != S_DONE)),
       .ain(ain),
       .din(din),
       .addr(addr),
