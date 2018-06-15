@@ -27,25 +27,24 @@ module my_pe #(parameter L_RAM_SIZE = 6)
       bin <= peram[addr];
   
   reg[2:0] counter;
-  
-  reg[31:0] accum;
-  always @(posedge aclk)
-    if (!aresetn)
-        accum <= 0;
-  
+
   always @(posedge aclk)
     if (valid)
         counter <= 6;
     else
         counter <= (counter > 0) ? counter - 1 : 0;
   
+  reg[31:0] accum;
+  always @(posedge aclk)
+    if (!aresetn)
+        accum <= 0;
+    else if (counter == 4)
+        accum <= dout;
+        
   wire mac_en;
   assign mac_en = counter > 1;
   wire[39:0] cin = { accum, 8'b0 };
   assign dvalid = counter == 1;
-  always @(posedge aclk)
-    if (counter == 4)
-        accum <= dout;
         
   xbip_multadd_0 mac_ip (
     .clk(aclk),
