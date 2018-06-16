@@ -25,7 +25,7 @@ module my_pe #(parameter L_RAM_SIZE = 6)
       peram[addr] <= din;
     else
       bin <= peram[addr];
-  
+
   reg[2:0] counter;
 
   always @(posedge aclk)
@@ -33,19 +33,19 @@ module my_pe #(parameter L_RAM_SIZE = 6)
         counter <= 6;
     else
         counter <= (counter > 0) ? counter - 1 : 0;
-  
+
   reg[31:0] accum;
   always @(posedge aclk)
     if (!aresetn)
         accum <= 0;
     else if (counter == 4)
         accum <= dout;
-        
+
   wire mac_en;
   assign mac_en = counter > 1;
   wire[39:0] cin = { accum, 8'b0 };
   assign dvalid = counter == 1;
-        
+
   xbip_multadd_0 mac_ip (
     .clk(aclk),
     .sclr(!aresetn),
@@ -56,46 +56,4 @@ module my_pe #(parameter L_RAM_SIZE = 6)
     .subtract('b0),
     .p(dout)
   );
-/*
-    reg [31:0] data;
-    always @(posedge aclk)
-       if (!aresetn)
-         data <= 'd0;
-          
-    reg[2:0] counter;
-    always @(posedge aclk)
-        if (valid)
-            counter <= 6;
-        else
-            counter <= counter > 0 ? counter - 1 : 0;
-            
-    wire[31:0] product;
-    wire[31:0] sum;
-    assign dout = data;
-    
-    reg pvalid;
-    reg svalid;
-    always @(posedge aclk) begin
-        pvalid <= counter > 3;
-        if (counter == 2) data <= sum;
-        svalid <= counter == 1;
-    end
-        
-    assign dvalid = svalid;
-        
-    mult_gen_0 multiplier (
-        .clk(aclk),
-        .a(ain[15:0]),
-        .b(bin[15:0]),
-        .p(product)
-    );
-    
-    c_addsub_0 adder (
-        .clk(aclk),
-        .ce(pvalid),
-        .a(product[31:8]),
-        .b(data),
-        .s(sum)
-    );
-*/
 endmodule
